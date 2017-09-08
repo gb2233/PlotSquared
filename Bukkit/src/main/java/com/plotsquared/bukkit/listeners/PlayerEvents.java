@@ -164,12 +164,8 @@ public class PlayerEvents extends PlotListener implements Listener {
     public void onRedstoneEvent(BlockRedstoneEvent event) {
         Block block = event.getBlock();
         switch (block.getType()) {
-            case OBSERVER:
             case REDSTONE_LAMP_OFF:
-            case REDSTONE_WIRE:
             case REDSTONE_LAMP_ON:
-            case PISTON_BASE:
-            case PISTON_STICKY_BASE:
             case IRON_DOOR_BLOCK:
             case LEVER:
             case WOODEN_DOOR:
