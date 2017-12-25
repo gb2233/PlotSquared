@@ -1189,6 +1189,10 @@ public class PlayerEvents extends PlotListener implements Listener {
                 return;
             }
         }
+        if (!plot.getFlag(Flags.REDSTONE, false)) {
+            event.setCancelled(true);
+            return;
+        }
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
@@ -1253,6 +1257,10 @@ public class PlayerEvents extends PlotListener implements Listener {
             if (!Objects.equals(plot, newPlot)) {
                 event.setCancelled(true);
             }
+        }
+        if (!plot.getFlag(Flags.REDSTONE, false)) {
+            event.setCancelled(true);
+            return;
         }
     }
 
