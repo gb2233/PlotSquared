@@ -46,7 +46,7 @@ public class PlayerEvents_1_8 extends PlotListener implements Listener {
         Player player = (Player) entity;
         PlayerInventory inv = player.getInventory();
         int slot = inv.getHeldItemSlot();
-        if ((slot != event.getSlot()) || (slot > 8) || !event.getEventName().equals("InventoryCreativeEvent")) {
+        if ((slot > 8) || !event.getEventName().equals("InventoryCreativeEvent")) {
             return;
         }
         ItemStack current = inv.getItemInHand();
@@ -68,16 +68,33 @@ public class PlayerEvents_1_8 extends PlotListener implements Listener {
             }
         }
         if (!"[(+NBT)]".equals(newLore) || (current.equals(newItem) && newLore.equals(oldLore))) {
-            return;
+            switch (newItem.getType()) {
+                case BANNER:
+                case SKULL_ITEM:
+                    if (newMeta != null) break;
+                default:
+                    return;
+            }
         }
+
         HashSet<Material> blocks = null;
         Block block = player.getTargetBlock(blocks, 7);
         BlockState state = block.getState();
         if (state == null) {
             return;
         }
-        if (state.getType() != newItem.getType()) {
-            return;
+        Material stateType = state.getType();
+        Material itemType = newItem.getType();
+        if (stateType != itemType) {
+            switch (stateType) {
+                case STANDING_BANNER:
+                case WALL_BANNER:
+                    if (itemType == Material.BANNER) break;
+                case SKULL:
+                    if (itemType == Material.SKULL_ITEM) break;
+                default:
+                    return;
+            }
         }
         Location l = BukkitUtil.getLocation(state.getLocation());
         PlotArea area = l.getPlotArea();

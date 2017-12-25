@@ -51,6 +51,7 @@ import com.plotsquared.bukkit.listeners.PlayerEvents_1_9;
 import com.plotsquared.bukkit.listeners.PlotPlusListener;
 import com.plotsquared.bukkit.listeners.PlotPlusListener_1_12;
 import com.plotsquared.bukkit.listeners.PlotPlusListener_Legacy;
+import com.plotsquared.bukkit.listeners.SingleWorldListener;
 import com.plotsquared.bukkit.listeners.WorldEvents;
 import com.plotsquared.bukkit.titles.DefaultTitle_111;
 import com.plotsquared.bukkit.util.BukkitChatManager;
@@ -98,8 +99,10 @@ import org.bukkit.command.PluginCommand;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Shulker;
 import org.bukkit.event.Listener;
 import org.bukkit.generator.ChunkGenerator;
+import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.metadata.MetadataValue;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.PluginManager;
@@ -158,6 +161,7 @@ public final class BukkitMain extends JavaPlugin implements Listener, IPlotMain 
 
     private int[] version;
     private String name;
+    private SingleWorldListener singleWorldListener;
 
     @Override
     public int[] getServerVersion() {
@@ -201,7 +205,16 @@ public final class BukkitMain extends JavaPlugin implements Listener, IPlotMain 
                     unload();
                 }
             }, 20);
+            try {
+                singleWorldListener = new SingleWorldListener(this);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
+    }
+
+    public SingleWorldListener getSingleWorldListener() {
+        return singleWorldListener;
     }
 
     public void unload() {
@@ -211,19 +224,26 @@ public final class BukkitMain extends JavaPlugin implements Listener, IPlotMain 
             SinglePlotArea area = ((SinglePlotAreaManager) manager).getArea();
             for (World world : Bukkit.getWorlds()) {
                 String name = world.getName();
+                char char0 = name.charAt(0);
+                if (!Character.isDigit(char0) && char0 != '-') continue;
+                if (!world.getPlayers().isEmpty()) continue;
+
                 PlotId id = PlotId.fromString(name);
                 if (id != null) {
                     Plot plot = area.getOwnedPlot(id);
                     if (plot != null) {
-                        List<PlotPlayer> players = plot.getPlayersInPlot();
-                        if (players.isEmpty() && PlotPlayer.wrap(plot.owner) == null) {
-                            for (Chunk chunk : world.getLoadedChunks()) {
-                                chunk.unload(true, false);
-                                if (System.currentTimeMillis() - start > 20) {
-                                    return;
-                                }
+                        if (PlotPlayer.wrap(plot.owner) == null) {
+                            if (world.getKeepSpawnInMemory()) {
+                                world.setKeepSpawnInMemory(false);
+                                return;
                             }
-                            Bukkit.unloadWorld(world, false);
+                            Chunk[] chunks = world.getLoadedChunks();
+                            if (chunks.length == 0) {
+                                if (!Bukkit.unloadWorld(world, true)) {
+                                    PS.debug("Failed to unload " + world.getName());
+                                }
+                                return;
+                            }
                         }
                     }
                 }
@@ -451,6 +471,7 @@ public final class BukkitMain extends JavaPlugin implements Listener, IPlotMain 
                                                         if (!(passenger instanceof Player) && entity.getMetadata("keep").isEmpty()) {
                                                             iterator.remove();
                                                             entity.remove();
+                                                            entity = null;
                                                         }
                                                     }
                                                 } else {
@@ -458,10 +479,34 @@ public final class BukkitMain extends JavaPlugin implements Listener, IPlotMain 
                                                     if (!(passenger instanceof Player) && entity.getMetadata("keep").isEmpty()) {
                                                         iterator.remove();
                                                         entity.remove();
+                                                        entity = null;
                                                     }
                                                 }
                                             }
                                         }
+                                        
+                                        if (entity != null && BukkitUtil.getLocation(entity.getLocation()).isPlotArea()) {
+                                        	if (entity instanceof Shulker) {
+                                        		LivingEntity livingEntity = (LivingEntity) entity;
+                                        		if (entity.hasMetadata("ownerplot")) {
+                                        			if(!livingEntity.isLeashed() || !entity.hasMetadata("keep")) {
+                                        				PlotId originalPlotId = (PlotId) (!entity.getMetadata("ownerplot").isEmpty() ? entity.getMetadata("ownerplot").get(0).value() : null);
+                                        				PlotId currentPlotId = BukkitUtil.getLocation(entity.getLocation()).getPlot().getId();
+                                        				if(!currentPlotId.equals(originalPlotId)) {
+                                        					iterator.remove();
+                                        					entity.remove();
+                                        				}
+                                        				
+                                        			}
+                                        		}
+                                        		else {
+                                                    if(!entity.hasMetadata("ownerplot")) {
+                                        				//This is to apply the metadata to already spawned shulkers (see EntitySpawnListener.java)
+                                            			entity.setMetadata("ownerplot", new FixedMetadataValue((Plugin) PS.get().IMP, BukkitUtil.getLocation(entity.getLocation()).getPlot().getId()));                                        				
+                                        			}
+                                        		}
+    										}
+    									}
                                 }
                             }
                         } catch (Throwable e) {

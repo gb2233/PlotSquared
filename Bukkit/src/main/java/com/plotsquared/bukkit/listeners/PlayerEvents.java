@@ -30,6 +30,7 @@ import com.plotsquared.bukkit.util.BukkitVersion;
 import com.plotsquared.listener.PlayerBlockEventType;
 import com.plotsquared.listener.PlotListener;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -59,6 +60,7 @@ import org.bukkit.entity.FallingBlock;
 import org.bukkit.entity.Fireball;
 import org.bukkit.entity.Hanging;
 import org.bukkit.entity.HumanEntity;
+import org.bukkit.entity.ItemFrame;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Monster;
 import org.bukkit.entity.Player;
@@ -108,6 +110,7 @@ import org.bukkit.event.player.PlayerBucketFillEvent;
 import org.bukkit.event.player.PlayerChangedWorldEvent;
 import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.event.player.PlayerEggThrowEvent;
+import org.bukkit.event.player.PlayerEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
@@ -117,6 +120,7 @@ import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.event.vehicle.VehicleCreateEvent;
 import org.bukkit.event.vehicle.VehicleDestroyEvent;
+import org.bukkit.event.vehicle.VehicleMoveEvent;
 import org.bukkit.event.world.StructureGrowEvent;
 import org.bukkit.help.HelpTopic;
 import org.bukkit.inventory.ItemStack;
@@ -507,6 +511,96 @@ public class PlayerEvents extends PlotListener implements Listener {
         playerMove(event);
     }
 
+    private Field fieldPlayer;
+    {
+        try {
+            fieldPlayer = PlayerEvent.class.getDeclaredField("player");
+            fieldPlayer.setAccessible(true);
+        } catch (NoSuchFieldException e) {
+            e.printStackTrace();
+        }
+    }
+    private PlayerMoveEvent moveTmp;
+    private boolean v112 = PS.get().checkVersion(PS.imp().getServerVersion(), BukkitVersion.v1_12_0);
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void vehicleMove(VehicleMoveEvent event) throws IllegalAccessException {
+        final org.bukkit.Location from = event.getFrom();
+        final org.bukkit.Location to = event.getTo();
+
+        int toX, toZ;
+        if ((toX = MathMan.roundInt(to.getX())) != MathMan.roundInt(from.getX()) | (toZ = MathMan.roundInt(to.getZ())) != MathMan.roundInt(from.getZ())) {
+            Vehicle vehicle = event.getVehicle();
+
+            // Check allowed
+
+
+            Entity passenger = vehicle.getPassenger();
+
+            if (passenger instanceof Player) {
+                final Player player = (Player) passenger;
+                // reset
+                if (moveTmp == null) moveTmp = new PlayerMoveEvent(null, from, to);
+                moveTmp.setFrom(from);
+                moveTmp.setTo(to);
+                moveTmp.setCancelled(false);
+                fieldPlayer.set(moveTmp, player);
+
+                List<Entity> passengers;
+                if (v112) passengers = vehicle.getPassengers();
+                else passengers = null;
+
+                this.playerMove(moveTmp);
+                org.bukkit.Location dest;
+                if (moveTmp.isCancelled()) {
+                    dest = from;
+                } else if (MathMan.roundInt(moveTmp.getTo().getX()) != toX || MathMan.roundInt(moveTmp.getTo().getZ()) != toZ) {
+                    dest = to;
+                } else {
+                    dest = null;
+                }
+                if (dest != null) {
+                    if (passengers != null) {
+                        vehicle.eject();
+                        vehicle.setVelocity(new Vector(0d, 0d, 0d));
+                        vehicle.teleport(dest);
+                        for (final Entity entity : passengers) vehicle.addPassenger(entity);
+                    } else {
+                        vehicle.eject();
+                        vehicle.setVelocity(new Vector(0d, 0d, 0d));
+                        vehicle.teleport(dest);
+                        vehicle.setPassenger(player);
+                    }
+                    return;
+                }
+            }
+            if (Settings.Enabled_Components.KILL_ROAD_VEHICLES) {
+                switch (vehicle.getType()) {
+                    case MINECART:
+                    case MINECART_CHEST:
+                    case MINECART_COMMAND:
+                    case MINECART_FURNACE:
+                    case MINECART_HOPPER:
+                    case MINECART_MOB_SPAWNER:
+                    case ENDER_CRYSTAL:
+                    case MINECART_TNT:
+                    case BOAT: {
+                        List<MetadataValue> meta = vehicle.getMetadata("plot");
+                        Plot toPlot = BukkitUtil.getLocation(to).getPlot();
+                        if (!meta.isEmpty()) {
+                            Plot origin = (Plot) meta.get(0).value();
+                            if (!origin.getBasePlot(false).equals(toPlot)) {
+                                vehicle.remove();
+                            }
+                        } else if (toPlot != null) {
+                            vehicle.setMetadata("plot", new FixedMetadataValue((Plugin) PS.get().IMP, toPlot));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void playerMove(PlayerMoveEvent event) {
         org.bukkit.Location from = event.getFrom();
@@ -697,6 +791,10 @@ public class PlayerEvents extends PlotListener implements Listener {
                     event.setCancelled(true);
                     return;
                 }
+            } else if ((location.getY() > area.MAX_BUILD_HEIGHT || location.getY() < area.MIN_BUILD_HEIGHT) && !Permissions
+                    .hasPermission(plotPlayer, C.PERMISSION_ADMIN_BUILD_HEIGHTLIMIT)) {
+                event.setCancelled(true);
+                MainUtil.sendMessage(plotPlayer, C.HEIGHT_LIMIT.s().replace("{limit}", String.valueOf(area.MAX_BUILD_HEIGHT)));
             }
             if (!plot.hasOwner()) {
                 if (Permissions.hasPermission(plotPlayer, C.PERMISSION_ADMIN_DESTROY_UNOWNED)) {
@@ -1161,7 +1259,8 @@ public class PlayerEvents extends PlotListener implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onBlockDispense(BlockDispenseEvent event) {
         Material type = event.getItem().getType();
-        if (type != Material.WATER_BUCKET && type != Material.LAVA_BUCKET) {
+        Material dispenserType = event.getBlock().getType();
+        if (dispenserType == Material.DROPPER || (type != Material.WATER_BUCKET && type != Material.LAVA_BUCKET)) {
             return;
         }
         Location location = BukkitUtil.getLocation(event.getVelocity().toLocation(event.getBlock().getWorld()));
@@ -1351,6 +1450,7 @@ public class PlayerEvents extends PlotListener implements Listener {
                 Material handType = hand.getType();
                 lb = new BukkitLazyBlock(PlotBlock.get((short) handType.getId(), (byte) 0));
                 switch (handType) {
+                    case FIREWORK:
                     case MONSTER_EGG:
                     case MONSTER_EGGS:
                         eventType = PlayerBlockEventType.SPAWN_MOB;
@@ -2096,6 +2196,9 @@ public class PlayerEvents extends PlotListener implements Listener {
             if (entity instanceof Villager && plot.getFlag(Flags.VILLAGER_INTERACT, false)) {
                 return;
             }
+            if (entity instanceof ItemFrame && plot.getFlag(Flags.MISC_INTERACT, false)) {
+                return;
+            }
             if (!Permissions.hasPermission(pp, C.PERMISSION_ADMIN_INTERACT_OTHER)) {
                 MainUtil.sendMessage(pp, C.NO_PERMISSION_EVENT, C.PERMISSION_ADMIN_INTERACT_OTHER);
                 event.setCancelled(true);
@@ -2386,6 +2489,11 @@ public class PlayerEvents extends PlotListener implements Listener {
         PlotPlayer pp = BukkitUtil.getPlayer(player);
         Plot plot = area.getPlot(location);
         if (plot != null) {
+            if ((location.getY() > area.MAX_BUILD_HEIGHT || location.getY() < area.MIN_BUILD_HEIGHT) && !Permissions
+                    .hasPermission(pp, C.PERMISSION_ADMIN_BUILD_HEIGHTLIMIT)) {
+                event.setCancelled(true);
+                MainUtil.sendMessage(pp, C.HEIGHT_LIMIT.s().replace("{limit}", String.valueOf(area.MAX_BUILD_HEIGHT)));
+            }
             if (!plot.hasOwner()) {
                 if (!Permissions.hasPermission(pp, C.PERMISSION_ADMIN_BUILD_UNOWNED)) {
                     MainUtil.sendMessage(pp, C.NO_PERMISSION_EVENT, C.PERMISSION_ADMIN_BUILD_UNOWNED);
@@ -2417,11 +2525,6 @@ public class PlayerEvents extends PlotListener implements Listener {
                 if (block.getType().hasGravity()) {
                     sendBlockChange(block.getLocation(), block.getType(), block.getData());
                 }
-            }
-            if (location.getY() > area.MAX_BUILD_HEIGHT && location.getY() < area.MIN_BUILD_HEIGHT && !Permissions
-                    .hasPermission(pp, C.PERMISSION_ADMIN_BUILD_HEIGHTLIMIT)) {
-                event.setCancelled(true);
-                MainUtil.sendMessage(pp, C.HEIGHT_LIMIT.s().replace("{limit}", String.valueOf(area.MAX_BUILD_HEIGHT)));
             }
         } else if (!Permissions.hasPermission(pp, C.PERMISSION_ADMIN_BUILD_ROAD)) {
             MainUtil.sendMessage(pp, C.NO_PERMISSION_EVENT, C.PERMISSION_ADMIN_BUILD_ROAD);

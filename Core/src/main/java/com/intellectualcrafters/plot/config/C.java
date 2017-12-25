@@ -79,7 +79,7 @@ public enum C {
     PERMISSION_AREA_LIST("plots.area.list", "static.permissions"),
     PERMISSION_AREA_REGEN("plots.area.regen", "static.permissions"),
     PERMISSION_AREA_TP("plots.area.tp", "static.permissions"),
-    PERMISSION_AUTO_MEGA("plots.atuo.mega", "static.permissions"),
+    PERMISSION_AUTO_MEGA("plots.auto.mega", "static.permissions"),
     PERMISSION_CLAIM_SCHEMATIC("plots.claim.%s0", "static.permissions"),
     PERMISSION_ADMIN_COMMAND_SCHEMATIC("plots.admin.command.schematic", "static.permissions"),
     PERMISSION_ADMIN_COMMAND_BO3("plots.admin.command.bo3", "static.permissions"),
@@ -156,6 +156,9 @@ public enum C {
     PERMISSION_SHARED("plots.visit.shared", "static.permissions"),
     PERMISSION_VISIT_OTHER("plots.visit.other", "static.permissions"),
     PERMISSION_HOME("plots.home", "static.permissions"),
+    PERMISSION_ALIAS_SET_OBSOLETE("plots.set.alias", "static.permissions"), // Note this is for backwards compatibility
+    PERMISSION_ALIAS_SET("plots.alias.set", "static.permissions"),
+    PERMISSION_ALIAS_REMOVE("plots.alias.remove", "static.permissions"),
 
     /*
      * Static console
@@ -395,6 +398,7 @@ public enum C {
      * Alias
      */
     ALIAS_SET_TO("$2Plot alias set to $1%alias%", "Alias"),
+    ALIAS_REMOVED("$2Plot alias removed", "Alias"),
     MISSING_ALIAS("$2You need to specify an alias", "Alias"),
     ALIAS_TOO_LONG("$2The alias must be < 50 characters in length", "Alias"),
     ALIAS_IS_TAKEN("$2That alias is already taken", "Alias"),
@@ -537,6 +541,7 @@ public enum C {
     NO_SUCH_PLOT("$2There is no such plot", "Invalid"),
     PLAYER_HAS_NOT_BEEN_ON("$2That player hasn't been in the plotworld", "Invalid"),
     FOUND_NO_PLOTS("$2Found no plots with your search query", "Invalid"),
+    FOUND_NO_PLOTS_FOR_PLAYER("$2No plots found for player: %s", "Invalid"),
     /*
      * Camera
      */

@@ -1134,8 +1134,8 @@ public class Plot {
         int z = largest.minZ - 1;
         PlotManager manager = getManager();
         int y = isLoaded() ? WorldUtil.IMP.getHighestBlock(getWorldName(), x, z) : 64;
-        if (area.ALLOW_SIGNS) {
-            y = Math.max(y, manager.getSignLoc(area, this).getY());
+        if (area.ALLOW_SIGNS && (y <= 0 || y >= 255)) {
+            y = Math.max(y, manager.getSignLoc(area, this).getY() - 1);
         }
         return new Location(getWorldName(), x, y + 1, z);
     }
@@ -1147,13 +1147,13 @@ public class Plot {
     public Location getHome() {
         BlockLoc home = this.getPosition();
         if (home == null || home.x == 0 && home.z == 0) {
-            return this.getDefaultHome();
+            return this.getDefaultHome(true);
         } else {
             Location bot = this.getBottomAbs();
             Location loc = new Location(bot.getWorld(), bot.getX() + home.x, bot.getY() + home.y, bot.getZ() + home.z, home.yaw, home.pitch);
             if (!isLoaded()) return loc;
             if (WorldUtil.IMP.getBlock(loc).id != 0) {
-                loc.setY(Math.max(WorldUtil.IMP.getHighestBlock(this.getWorldName(), loc.getX(), loc.getZ()), bot.getY()));
+                loc.setY(Math.max(1 + WorldUtil.IMP.getHighestBlock(this.getWorldName(), loc.getX(), loc.getZ()), bot.getY()));
             }
             return loc;
         }
@@ -1182,11 +1182,16 @@ public class Plot {
      * @return
      */
     public Location getDefaultHome() {
+        return getDefaultHome(false);
+    }
+
+    public Location getDefaultHome(boolean member) {
         Plot plot = this.getBasePlot(false);
-        if (this.area.DEFAULT_HOME != null) {
+        PlotLoc loc = member ? area.DEFAULT_HOME : area.NONMEMBER_HOME;
+        if (loc != null) {
             int x;
             int z;
-            if (this.area.DEFAULT_HOME.x == Integer.MAX_VALUE && this.area.DEFAULT_HOME.z == Integer.MAX_VALUE) {
+            if (loc.x == Integer.MAX_VALUE && loc.z == Integer.MAX_VALUE) {
                 // center
                 RegionWrapper largest = plot.getLargestRegion();
                 x = (largest.maxX >> 1) - (largest.minX >> 1) + largest.minX;
@@ -1194,8 +1199,8 @@ public class Plot {
             } else {
                 // specific
                 Location bot = plot.getBottomAbs();
-                x = bot.getX() + this.area.DEFAULT_HOME.x;
-                z = bot.getZ() + this.area.DEFAULT_HOME.z;
+                x = bot.getX() + loc.x;
+                z = bot.getZ() + loc.z;
             }
             int y = isLoaded() ? WorldUtil.IMP.getHighestBlock(plot.getWorldName(), x, z) : 64;
             return new Location(plot.getWorldName(), x, y + 1, z);
@@ -2299,10 +2304,11 @@ public class Plot {
             return connected_cache;
         }
         regions_cache = null;
-        connected_cache = new HashSet<>();
+
+        HashSet<Plot> tmpSet = new HashSet<>();
         ArrayDeque<Plot> frontier = new ArrayDeque<>();
         HashSet<Object> queuecache = new HashSet<>();
-        connected_cache.add(this);
+        tmpSet.add(this);
         Plot tmp;
         if (merged[0]) {
             tmp = this.area.getPlotAbs(this.id.getRelative(0));
@@ -2376,39 +2382,40 @@ public class Plot {
                 PS.debug("Ignoring invalid merged plot: " + current + " | " + current.owner);
                 continue;
             }
-            connected_cache.add(current);
+            tmpSet.add(current);
             queuecache.remove(current);
             merged = current.getMerged();
             if (merged[0]) {
                 tmp = current.area.getPlotAbs(current.id.getRelative(0));
-                if (tmp != null && !queuecache.contains(tmp) && !connected_cache.contains(tmp)) {
+                if (tmp != null && !queuecache.contains(tmp) && !tmpSet.contains(tmp)) {
                     queuecache.add(tmp);
                     frontier.add(tmp);
                 }
             }
             if (merged[1]) {
                 tmp = current.area.getPlotAbs(current.id.getRelative(1));
-                if (tmp != null && !queuecache.contains(tmp) && !connected_cache.contains(tmp)) {
+                if (tmp != null && !queuecache.contains(tmp) && !tmpSet.contains(tmp)) {
                     queuecache.add(tmp);
                     frontier.add(tmp);
                 }
             }
             if (merged[2]) {
                 tmp = current.area.getPlotAbs(current.id.getRelative(2));
-                if (tmp != null && !queuecache.contains(tmp) && !connected_cache.contains(tmp)) {
+                if (tmp != null && !queuecache.contains(tmp) && !tmpSet.contains(tmp)) {
                     queuecache.add(tmp);
                     frontier.add(tmp);
                 }
             }
             if (merged[3]) {
                 tmp = current.area.getPlotAbs(current.id.getRelative(3));
-                if (tmp != null && !queuecache.contains(tmp) && !connected_cache.contains(tmp)) {
+                if (tmp != null && !queuecache.contains(tmp) && !tmpSet.contains(tmp)) {
                     queuecache.add(tmp);
                     frontier.add(tmp);
                 }
             }
         }
-        return connected_cache;
+        connected_cache = tmpSet;
+        return tmpSet;
     }
 
     /**
@@ -2600,7 +2607,7 @@ public class Plot {
             if (this.area.HOME_ALLOW_NONMEMBER || plot.isAdded(player.getUUID())) {
                 location = this.getHome();
             } else {
-                location = this.getDefaultHome();
+                location = this.getDefaultHome(false);
             }
             if (Settings.Teleport.DELAY == 0 || Permissions.hasPermission(player, "plots.teleport.delay.bypass")) {
                 MainUtil.sendMessage(player, C.TELEPORTED_TO_PLOT);

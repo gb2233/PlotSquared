@@ -224,6 +224,9 @@ public class Auto extends SubCommand {
                             MainUtil.sendMessage(player, C.NO_FREE_PLOTS);
                         } else {
                             plot.claim(player, true, schem, false);
+                            if (area.AUTO_MERGE) {
+                                plot.autoMerge(-1, Integer.MAX_VALUE, player.getUUID(), true);
+                            }
                         }
                     }
                 });
@@ -231,7 +234,7 @@ public class Auto extends SubCommand {
         });
     }
 
-    private static void autoClaimFromDatabase(final PlotPlayer player, final PlotArea area, PlotId start, final RunnableVal<Plot> whenDone) {
+    public static void autoClaimFromDatabase(final PlotPlayer player, final PlotArea area, PlotId start, final RunnableVal<Plot> whenDone) {
         final Plot plot = area.getNextFreePlot(player, start);
         if (plot == null) {
             whenDone.run(null);

@@ -119,7 +119,15 @@ public class BukkitUtil extends WorldUtil {
         World world = getWorld(worldName);
         Block block = world.getBlockAt(x, y, z);
         //        block.setType(Material.AIR);
-        block.setTypeIdAndData(Material.WALL_SIGN.getId(), (byte) 2, false);
+        Material type = block.getType();
+        if (type != Material.SIGN && type != Material.SIGN_POST) {
+            int data = 2;
+            if (world.getBlockAt(x, y, z + 1).getType().isSolid()) data = 2;
+            else if (world.getBlockAt(x + 1, y, z).getType().isSolid()) data = 4;
+            else if (world.getBlockAt(x, y, z - 1).getType().isSolid()) data = 3;
+            else if (world.getBlockAt(x - 1, y, z).getType().isSolid()) data = 5;
+            block.setTypeIdAndData(Material.WALL_SIGN.getId(), (byte) data, false);
+        }
         BlockState blockstate = block.getState();
         if (blockstate instanceof Sign) {
             final Sign sign = (Sign) blockstate;
@@ -173,12 +181,14 @@ public class BukkitUtil extends WorldUtil {
     public int getHighestBlock(String world, int x, int z) {
         World bukkitWorld = getWorld(world);
         // Skip top and bottom block
-        for (int y = bukkitWorld.getMaxHeight() - 2; y > 0; y--) {
+        int air = 1;
+        for (int y = bukkitWorld.getMaxHeight() - 1; y >= 0; y--) {
             Block block = bukkitWorld.getBlockAt(x, y, z);
             if (block != null) {
                 Material type = block.getType();
                 if (type.isSolid()) {
-                    return y + 1;
+                    if (air > 1) return y;
+                    air = 0;
                 } else {
                     switch (type) {
                         case WATER:
@@ -187,10 +197,11 @@ public class BukkitUtil extends WorldUtil {
                         case STATIONARY_WATER:
                             return y;
                     }
+                    air++;
                 }
             }
         }
-        return bukkitWorld.getMaxHeight();
+        return bukkitWorld.getMaxHeight() - 1;
     }
 
     @Override
