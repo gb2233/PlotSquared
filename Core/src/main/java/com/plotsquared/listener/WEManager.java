@@ -54,7 +54,7 @@ public class WEManager {
         if (plot == null) {
             plot = player.getMeta("WorldEditRegionPlot");
         }
-        if (plot != null && (!Settings.Done.RESTRICT_BUILDING || !Flags.DONE.isSet(plot)) && ((allowMember && plot.isAdded(uuid)) || (!allowMember && (plot.isOwner(uuid)) || plot.getTrusted().contains(uuid)))) {
+        if (plot != null && (!Settings.Done.RESTRICT_BUILDING || !Flags.DONE.isSet(plot)) && ((allowMember && plot.isAdded(uuid)) || (!allowMember && (plot.isOwner(uuid)) || plot.getTrusted().contains(uuid))) && !(Flags.NO_WORLDEDIT.isTrue(plot))) {
             for (RegionWrapper region : plot.getRegions()) {
                 RegionWrapper copy = new RegionWrapper(region.minX, region.maxX, area.MIN_BUILD_HEIGHT, area.MAX_BUILD_HEIGHT, region.minZ, region.maxZ);
                 regions.add(copy);

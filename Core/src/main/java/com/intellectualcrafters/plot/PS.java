@@ -1077,6 +1077,13 @@ public class PS{
         return new HashSet<>(myPlots);
     }
 
+    public boolean hasPlot(final UUID uuid) {
+        for (PlotArea area : manager.getAllPlotAreas()) {
+            if (area.hasPlot(uuid)) return true;
+        }
+        return false;
+    }
+
     public Set<Plot> getBasePlots(final UUID uuid) {
         final ArrayList<Plot> myplots = new ArrayList<>();
         foreachBasePlot(new RunnableVal<Plot>() {
@@ -1662,7 +1669,7 @@ public class PS{
             java.util.Scanner scanner = new java.util.Scanner(stream).useDelimiter("\\A");
             String versionString = scanner.next().trim();
             scanner.close();
-            this.version = new PlotVersion(versionString);
+            this.version = PlotVersion.tryParse(versionString);
             Settings.DATE = new Date(100 + version.year, version.month, version.day).toGMTString();
             Settings.BUILD = "https://ci.athion.net/job/PlotSquared/" + version.build;
             Settings.COMMIT = "https://github.com/IntellectualSites/PlotSquared/commit/" + Integer.toHexString(version.hash);

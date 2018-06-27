@@ -158,7 +158,9 @@ public class Settings extends Config {
         public int REQUIRED_PLOTS = -1;
         public boolean CONFIRMATION = true;
         public int DAYS = 7;
+        public int SKIP_ACCOUNT_AGE_DAYS = -1;
         public List<String> WORLDS = new ArrayList<>(Collections.singletonList("*"));
+
 
         @Comment("See: https://github.com/IntellectualSites/PlotSquared/wiki/Plot-analysis")
         public static final class CALIBRATION {
@@ -213,13 +215,13 @@ public class Settings extends Config {
                 " - Downloads can be deleted by the user",
                 " - Supports plot uploads, downloads and saves",
         })
-        public static String URL = "http://empcraft.com/plots/";
+        public static String URL = "https://empcraft.com/plots/";
         @Comment({
                 "The web interface for assets",
                 " - All schematics are organized and public",
                 " - Assets can be searched, selected and downloaded",
         })
-        public static String ASSETS = "http://empcraft.com/assetpack/";
+        public static String ASSETS = "https://empcraft.com/assetpack/";
 
     }
 
@@ -276,6 +278,8 @@ public class Settings extends Config {
         public static boolean DISABLE_UNOCCUPIED = false;
         @Comment("Disable redstone when all owners/trusted/members are offline")
         public static boolean DISABLE_OFFLINE = false;
+        @Comment("Detect and cancel invalid pistons on the edge of plots (e.g. placed with WorldEdit)")
+        public static boolean DETECT_INVALID_EDGE_PISTONS = false;
     }
 
     public static final class Claim {
@@ -321,6 +325,8 @@ public class Settings extends Config {
         public static boolean CHUNK_PROCESSOR = false;
         @Comment("Kill mobs on roads")
         public static boolean KILL_ROAD_MOBS = false;
+        @Comment("Kill items on roads")
+        public static boolean KILL_ROAD_ITEMS = false;
         @Comment("Kill vehicles on roads")
         public static boolean KILL_ROAD_VEHICLES = false;
         @Comment("Notify a player of any missed comments upon plot entry")

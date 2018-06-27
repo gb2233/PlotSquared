@@ -1,6 +1,7 @@
 package com.plotsquared.nukkit.listeners;
 
 import cn.nukkit.Player;
+import cn.nukkit.Server;
 import cn.nukkit.block.Block;
 import cn.nukkit.command.CommandSender;
 import cn.nukkit.entity.Entity;
@@ -564,8 +565,10 @@ public class PlayerEvents extends PlotListener implements Listener {
         if (plot == null) {
             return;
         }
-        event.setCancelled(true);
         String message = event.getMessage();
+        if (plotPlayer.hasPermission("plots.chat.color")) {
+            event.setMessage(C.color(message));
+        }
         String format = C.PLOT_CHAT_FORMAT.s();
         String sender = event.getPlayer().getDisplayName();
         PlotId id = plot.getId();
@@ -584,15 +587,13 @@ public class PlayerEvents extends PlotListener implements Listener {
                 }
             }
         }
-        String partial = C.color(format.replace("%plot_id%", id.x + ";" + id.y).replace("%sender%", sender));
-        String full = partial.replace("%msg%", message);
-        for (CommandSender receiver : recipients) {
-            receiver.sendMessage(full);
-        }
+        String newFormat = C.color(format.replace("%plot_id%", id.x + ";" + id.y).replace("%sender%", "{%0}").replace("%msg%", "{%1}"));
+        event.setFormat(newFormat);
+        recipients.add(Server.getInstance().getConsoleSender());
     }
 
-@EventHandler(priority = EventPriority.LOWEST)
-public void blockDestroy(BlockBreakEvent event) {
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void blockDestroy(BlockBreakEvent event) {
         Player player = event.getPlayer();
         Location location = NukkitUtil.getLocation(event.getBlock().getLocation());
         PlotArea area = location.getPlotArea();
